@@ -132,9 +132,25 @@ struct perfc_callstack {
 	struct perfc_tls_ctx pstack[MAX_PERFC_STACK_DEPTH];
 };
 
+enum perfc_submodule_tags {
+	PST_START,
+	PST_FSAL,
+	PST_KVS,
+	PST_CFS,
+	PST_DSTORE,
+	PST_DS,
+	PST_CORTX_KVS,
+	PST_M0,
+	PST_INIT,
+	PST_M0KVS,
+	PST_M0_KEY_ITER,
+	PST_END
+};
+
 enum perfc_function_tags {
 	PFT_START,
-
+	// PST_FSAL
+	PFT_FSAL_START,
 	PFT_FSAL_READ,
 	PFT_FSAL_WRITE,
 	PFT_FSAL_GETATTRS,
@@ -143,7 +159,9 @@ enum perfc_function_tags {
 	PFT_FSAL_RMDIR,
 	PFT_FSAL_READDIR,
 	PFT_FSAL_LOOKUP,
-
+	PFT_FSAL_END,
+	// PST_KVS
+	PFT_KVS_START,
 	PFT_KVS_INIT,
 	PFT_KVS_FINI,
 	PFT_KVS_ALLOC,
@@ -151,7 +169,9 @@ enum perfc_function_tags {
 	PFT_KVS_GET,
 	PFT_KVS_SET,
 	PFT_KVTREE_ITER_CH,
-
+	PFT_KVS_END,
+	// PST_CFS
+	PFT_CFS_START,
 	PFT_CFS_READ,
 	PFT_CFS_WRITE,
 	PFT_CFS_GETATTR,
@@ -161,11 +181,15 @@ enum perfc_function_tags {
 	PFT_CFS_RMDIR,
 	PFT_CFS_READDIR,
 	PFT_CFS_LOOKUP,
-
+	PFT_CFS_END,
+	// PST_DSTORE
+	PFT_DSTORE_START,
 	PFT_DSTORE_GET,
 	PFT_DSTORE_PREAD,
 	PFT_DSTORE_PWRITE,
-
+	PFT_DSTORE_END,
+	// PST_DS
+	PFT_DS_START,
 	PFT_DS_INIT,
 	PFT_DS_FINISH,
 
@@ -197,6 +221,9 @@ enum perfc_function_tags {
 	PFT_DSTORE_IO_OP_WAIT,
 	PFT_DSTORE_IO_OP_FINI,
 
+	PFT_DS_END,
+	// PST_CORTX_KVS
+	PFT_CORTX_KVS_START,
 	PFT_CORTX_KVS_INIT,
 	PFT_CORTX_KVS_FINISH,
 	PFT_CORTX_KVS_ALLOC,
@@ -216,7 +243,9 @@ enum perfc_function_tags {
 	PFT_CORTX_KVS_PREFIX_ITER_FINISH,
 	PFT_CORTX_KVS_ITER_GET_KV,
 	PFT_CORTX_KVS_GET_LIST_SIZE,
-
+	PFT_CORTX_KVS_END,
+	// PST_M0
+	PFT_M0_START,
 	PFT_M0_INIT,
 	PFT_M0_FINISH,
 	PFT_M0STORE_CREATE_OBJECT,
@@ -225,9 +254,13 @@ enum perfc_function_tags {
 	PFT_M0STORE_OBJ_OPEN,
 	PFT_M0STORE_OBJ_CLOSE,
 	PFT_M0_UFID_GET,
-
+	PFT_M0_END,
+	// PST_INIT
+	PFT_INIT_START,
 	PFT_INIT_MOTR,
-
+	PFT_INIT_END,
+	// PST_M0KVS
+	PFT_M0KVS_START,
 	PFT_M0KVS_REINIT,
 	PFT_M0_OP_KVS,
 	PFT_M0IDX_CREATE,
@@ -250,10 +283,13 @@ enum perfc_function_tags {
 	PFT_M0KVS_KEY_ITER_NEXT,
 	PFT_M0KVS_ALLOC,
 	PFT_M0KVS_FREE,
-
+	PFT_M0KVS_END,
+	// PST_M0_KEY_ITER
+	PFT_M0_KEY_ITER_START,
 	PFT_M0_KEY_ITER_FINISH,
 	PFT_M0_KEY_ITER_FIND,
 	PFT_M0_KEY_ITER_NEXT,
+	PFT_M0_KEY_ITER_END,
 
 	PFT_END
 };
@@ -281,6 +317,8 @@ enum perfc_entity_attrs {
 	PEA_START,
 
 	PEA_W_OFFSET,
+	PEA_W_IOVC,
+	PEA_W_IOVL,
 	PEA_W_SIZE,
 	PEA_W_RES_MAJ,
 	PEA_W_RES_MIN,
@@ -416,48 +454,54 @@ enum perfc_entity_maps {
 };
 
 /* Format of State perf. counters:
- * | tsdb_modules | function tag | PET_STATE | opid | perfc_entity_states
- * | [Rest] |
+ * | tsdb_modules | function tag | submod tag | PET_STATE | opid
+ * | perfc_entity_states | [Rest] |
  * where Arguments:
  *	- TSDB Module ID
  *	- an enum value from perfc_function_tags
+ *	- an enum value from perfc_submodule_tags
  *	- PET_STATE tag as this traces a state
  *	- op id - caller generated tag for operation id
  *	- perfc_entity_states - caller generated enum value from
  *	  perfc_entity_states to tag the state
  *	- __VA_ARGS_ - operation-specific arguments.
  */
-#define PERFC_STATE_V2(__mod, __fn_tag, opid, state, ...) do {		\
+#define PERFC_STATE_V2(__mod, __fn_tag, __sm_tag, opid, state, ...) do {\
 	dassert(__fn_tag > PFT_START && __fn_tag < PFT_END);		\
+	dassert(__sm_tag > PST_START && __sm_tag < PST_END);		\
 	dassert(state > PES_START && state < PES_END);			\
-	TSDB_ADD(TSDB_MK_AID(__mod, 0xAB), __fn_tag, PET_STATE, opid,	\
-		 state, __VA_ARGS__);					\
+	TSDB_ADD(TSDB_MK_AID(__mod, 0xAB), __fn_tag, __sm_tag,		\
+		 PET_STATE, opid, state, __VA_ARGS__);			\
 } while (0)
 
 /* Format of Attribute perf. counters:
- * | tsdb_modules | function tag | PET_ATTR | opid | attr type | attrid
- * | [Rest] |
+ * | tsdb_modules | function tag | submod tag |PET_ATTR | opid | attr type
+ * | attrid | [Rest] |
  * where Arguments:
  *	- TSDB Module ID
  *	- an enum value from perfc_function_tags
+ *	- an enum value from perfc_submodule_tags
  *	- PET_ATTR tag as this traces an attribute of a op
  *	- op id - caller generated tag for operation id
  *	- perfc_entity_attrs - caller generated enum value from
  *	  perfc_entity_attrs to tag the attribute
  *	- __VA_ARGS_ - attribute-specific arguments.
  */
-#define PERFC_ATTR_V2(__mod, __fn_tag, opid, attrid, ...) do {		\
+#define PERFC_ATTR_V2(__mod, __fn_tag, __sm_tag, opid, attrid, ...) do {\
 	dassert(__fn_tag > PFT_START && __fn_tag < PFT_END);		\
+	dassert(__sm_tag > PST_START && __sm_tag < PST_END);		\
 	dassert(attrid > PEA_START && attrid < PEA_END);		\
-	TSDB_ADD(TSDB_MK_AID(__mod, 0xCD), __fn_tag, PET_ATTR, opid,	\
-		 attrid, __VA_ARGS__);					\
+	TSDB_ADD(TSDB_MK_AID(__mod, 0xCD), __fn_tag, __sm_tag,		\
+		 PET_ATTR, opid, attrid, __VA_ARGS__);			\
 } while (0)
 
 /* Format of Map perf. counters:
- * | tsdb_modules | function tag | map tag | src opid | dst opid | caller_opid, [Rest] |
+ * | tsdb_modules | function tag | submod tag | map tag | src opid | dst opid
+ * | caller_opid, [Rest] |
  * where Arguments:
  *	- TSDB Module ID
  *	- an enum value from perfc_function_tags
+ *	- an enum value from perfc_submodule_tags
  *	- PET_MAP tag as this traces a map of two ops
  *	- Caller passed map tag from enum perfc_entity_maps
  *	- opid - caller generated tag for operation id
@@ -465,10 +509,11 @@ enum perfc_entity_maps {
  *	- caller_opid - caller generated tag for previous caller's operation id
  *	- __VA_ARGS_ - attribute-specific arguments.
  */
-#define PERFC_MAP_V2(__mod, __fn_tag, map_tag, opid, related_opid, caller_opid,...) do {\
+#define PERFC_MAP_V2(__mod, __fn_tag, __sm_tag, map_tag, opid, related_opid, caller_opid,...) do {\
 	dassert(__fn_tag > PFT_START && __fn_tag < PFT_END);		\
+	dassert(__sm_tag > PST_START && __sm_tag < PST_END);		\
 	dassert(map_tag > PEM_START && map_tag < PEM_END);		\
-	TSDB_ADD(TSDB_MK_AID(__mod, 0xEF), __fn_tag, PET_MAP, map_tag,	\
+	TSDB_ADD(TSDB_MK_AID(__mod, 0xEF), __fn_tag, __sm_tag, PET_MAP, map_tag,\
 		 opid, related_opid, caller_opid, __VA_ARGS__);			\
 } while (0)
 
@@ -568,10 +613,45 @@ static inline struct perfc_tls_ctx perfc_tls_get_prev(void)
 	return perfstack->pstack[perfstack->top-1];
 }
 
+#define perfc_sm_tag(__ftag)						\
+	enum perfc_submodule_tags smtag;				\
+	if (__ftag > PFT_FSAL_START &&					\
+	    __ftag < PFT_FSAL_END) {					\
+		smtag = PST_FSAL;					\
+	} else if (__ftag > PFT_KVS_START&&				\
+		   __ftag < PFT_KVS_END) {				\
+			smtag = PST_KVS;				\
+	} else if (__ftag > PFT_CFS_START &&				\
+		   __ftag < PFT_CFS_END) {				\
+			smtag = PST_CFS;				\
+	} else if (__ftag > PFT_DSTORE_START &&				\
+		   __ftag < PFT_DSTORE_END) {				\
+			smtag = PST_DSTORE;				\
+	} else if (__ftag > PFT_DS_START &&				\
+		   __ftag < PFT_DS_END) {				\
+			smtag = PST_DS;					\
+	} else if (__ftag > PFT_CORTX_KVS_START &&			\
+		   __ftag < PFT_CORTX_KVS_END) {			\
+			smtag = PST_CORTX_KVS;				\
+	} else if (__ftag > PFT_M0_START &&				\
+		   __ftag < PFT_M0_END) {				\
+			smtag = PST_M0;					\
+	} else if (__ftag > PFT_INIT_START &&				\
+		   __ftag < PFT_INIT_END) {				\
+			smtag = PST_INIT;				\
+	} else if (__ftag > PFT_M0KVS_START &&				\
+		   __ftag < PFT_M0KVS_END) {				\
+			smtag = PST_M0KVS;				\
+	} else if (__ftag > PFT_M0_KEY_ITER_START &&			\
+		   __ftag < PFT_M0_KEY_ITER_END) {			\
+			smtag = PST_M0_KEY_ITER;			\
+	}								\
+
 #define perfc_trace_state(state, ...) do {				\
 	struct perfc_tls_ctx ptctx = perfc_tls_get_top();		\
 	if (ptctx.opid != PERFC_INVALID_ID) {				\
-		PERFC_STATE_V2(ptctx.mod, ptctx.fn_tag,			\
+		perfc_sm_tag(ptctx.fn_tag);				\
+		PERFC_STATE_V2(ptctx.mod, ptctx.fn_tag, smtag,		\
 			       ptctx.opid, state, __VA_ARGS__);		\
 	}								\
 } while (0)
@@ -579,7 +659,8 @@ static inline struct perfc_tls_ctx perfc_tls_get_prev(void)
 #define perfc_trace_attr(attrid, ...) do {				\
 	struct perfc_tls_ctx ptctx = perfc_tls_get_top();		\
 	if (ptctx.opid != PERFC_INVALID_ID) {				\
-		PERFC_ATTR_V2(ptctx.mod, ptctx.fn_tag,			\
+		perfc_sm_tag(ptctx.fn_tag);				\
+		PERFC_ATTR_V2(ptctx.mod, ptctx.fn_tag, smtag,		\
 			      ptctx.opid, attrid, __VA_ARGS__);		\
 	}								\
 } while (0)
@@ -590,7 +671,8 @@ static inline struct perfc_tls_ctx perfc_tls_get_prev(void)
 	dassert(ptctx.opid != PERFC_INVALID_ID);			\
 	dassert(ptcctx.opid != PERFC_INVALID_ID);			\
 	if (ptctx.opid != PERFC_INVALID_ID) {				\
-		PERFC_MAP_V2(ptctx.mod, fn_tag, map_tag, _opid,		\
+		perfc_sm_tag(fn_tag);					\
+		PERFC_MAP_V2(ptctx.mod, fn_tag, smtag, map_tag, _opid,	\
 			     ptctx.opid, ptcctx.opid, __VA_ARGS__);	\
 	}								\
 } while (0)

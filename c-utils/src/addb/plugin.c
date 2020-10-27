@@ -82,6 +82,8 @@ static const struct entity_attrs_items {
   const char* str;
 } g_entity_attrs_items_map[] = {
   [PEA_W_OFFSET] = { .str = "write_offset" },
+  [PEA_W_IOVC] = { .str = "write_iovc" },
+  [PEA_W_IOVL] = { .str = "write_iovl" },
   [PEA_W_SIZE] = { .str = "write_size" },
   [PEA_W_RES_MAJ] = { .str = "write_result_major_code" },
   [PEA_W_RES_MIN] = { .str = "write_result_minor_code" },
@@ -197,6 +199,7 @@ static void decode_perfc_entity_attrs(struct m0_addb2__context *ctx,
 static const struct function_tag_items {
   const char* str;
 } g_function_tag_items_map[] = {
+  [PFT_FSAL_START] = { .str = "fsal_start" },
   [PFT_FSAL_READ] = { .str = "fsal_read" },
   [PFT_FSAL_WRITE] = { .str = "fsal_write" },
   [PFT_FSAL_GETATTRS] = { .str = "fsal_getattrs" },
@@ -205,7 +208,9 @@ static const struct function_tag_items {
   [PFT_FSAL_READDIR] = { .str = "fsal_readdir" },
   [PFT_FSAL_RMDIR] = { .str = "fsal_rmdir" },
   [PFT_FSAL_LOOKUP] = { .str = "fsal_lookup" },
+  [PFT_FSAL_END] = { .str = "fsal_end" },
 
+  [PFT_KVS_START] = { .str = "kvs_start" },
   [PFT_KVS_INIT] = { .str = "kvs_init" },
   [PFT_KVS_FINI] = { .str = "kvs_finish" },
   [PFT_KVS_ALLOC] = { .str = "kvs_alloc" },
@@ -213,7 +218,9 @@ static const struct function_tag_items {
   [PFT_KVS_GET] = { .str = "kvs_get" },
   [PFT_KVS_SET] = { .str = "kvs_set" },
   [PFT_KVTREE_ITER_CH] = { .str = "kvtree_iterate_child" },
+  [PFT_KVS_END] = { .str = "kvs_end" },
 
+  [PFT_CFS_START] = { .str = "cfs_start" },
   [PFT_CFS_READ] = { .str = "cfs_read" },
   [PFT_CFS_WRITE] = { .str = "cfs_write" },
   [PFT_CFS_GETATTR] = { .str = "cfs_get_attribute" },
@@ -223,11 +230,15 @@ static const struct function_tag_items {
   [PFT_CFS_RMDIR] = { .str = "cfs_rmdir" },
   [PFT_CFS_READDIR] = { .str = "cfs_readdir" },
   [PFT_CFS_LOOKUP] = { .str = "cfs_lookup" },
+  [PFT_CFS_END] = { .str = "cfs_end" },
 
+  [PFT_DSTORE_START] = { .str = "dstore_start" },
   [PFT_DSTORE_GET] = { .str = "dstore_get" },
   [PFT_DSTORE_PREAD] = { .str = "dstore_pread" },
   [PFT_DSTORE_PWRITE] = { .str = "dstore_pwrite" },
+  [PFT_DSTORE_END] = { .str = "dstore_end" },
 
+  [PFT_DS_START] = { .str = "ds_start" },
   [PFT_DS_INIT] = { .str = "ds_init" },
   [PFT_DS_FINISH] = { .str = "ds_finish" },
 
@@ -243,6 +254,7 @@ static const struct function_tag_items {
   [PFT_DS_IO_SUBMIT] = { .str = "ds_io_submit" },
   [PFT_DS_IO_WAIT] = { .str = "ds_io_wait" },
   [PFT_DS_IO_FINISH] = { .str = "ds_io_finish" },
+  [PFT_DS_END] = { .str = "ds_end" },
 
   [PFT_DSTORE_INIT] = { .str = "dstore_init"},
   [PFT_DSTORE_FINI] = { .str = "dstore_fini"},
@@ -260,6 +272,7 @@ static const struct function_tag_items {
   [PFT_DSTORE_IO_OP_WAIT] = { .str = "dstore_io_op_wait"},
   [PFT_DSTORE_IO_OP_FINI] = { .str = "dstore_io_op_fini"},
 
+  [PFT_CORTX_KVS_START] = { .str = "cortx_kvs_start" },
   [PFT_CORTX_KVS_INIT] = { .str = "cortx_kvs_init" },
   [PFT_CORTX_KVS_FINISH] = { .str = "cortx_kvs_finish" },
   [PFT_CORTX_KVS_ALLOC] = { .str = "cortx_kvs_alloc" },
@@ -279,7 +292,9 @@ static const struct function_tag_items {
   [PFT_CORTX_KVS_PREFIX_ITER_FINISH] = { .str = "cortx_kvs_prefix_iter_finish" },
   [PFT_CORTX_KVS_ITER_GET_KV] = { .str = "cortx_kvs_iter_get_kv" },
   [PFT_CORTX_KVS_GET_LIST_SIZE] = { .str = "cortx_kvs_get_list_size" },
+  [PFT_CORTX_KVS_END] = { .str = "cortx_kvs_end" },
 
+  [PFT_M0_START] = { .str = "m0_start" },
   [PFT_M0_INIT] = { .str = "m0_init" },
   [PFT_M0_FINISH] = { .str = "m0_finish" },
   [PFT_M0STORE_CREATE_OBJECT] = { .str = "m0store_create_object" },
@@ -288,9 +303,13 @@ static const struct function_tag_items {
   [PFT_M0STORE_OBJ_OPEN] = { .str = "m0store_obj_open" },
   [PFT_M0STORE_OBJ_CLOSE] = { .str = "m0store_obj_close" },
   [PFT_M0_UFID_GET] = { .str = "m0_ufid_get" },
+  [PFT_M0_END] = { .str = "m0_end" },
 
+  [PFT_INIT_START] = { .str = "m0_init_start" },
   [PFT_INIT_MOTR] = { .str = "m0_init_motr" },
+  [PFT_INIT_END] = { .str = "m0_init_end" },
 
+  [PFT_M0KVS_START] = { .str = "m0kvs_start" },
   [PFT_M0KVS_REINIT] = { .str = "m0kvs_reinit" },
   [PFT_M0_OP_KVS] = { .str = "m0_op_kvs" },
   [PFT_M0IDX_CREATE] = { .str = "m0idx_create" },
@@ -313,19 +332,45 @@ static const struct function_tag_items {
   [PFT_M0KVS_KEY_ITER_NEXT] = { .str = "m0kvs_key_iter_next" },
   [PFT_M0KVS_ALLOC] = { .str = "m0kvs_alloc" },
   [PFT_M0KVS_FREE] = { .str = "m0kvs_free" },
+  [PFT_M0KVS_END] = { .str = "m0kvs_end" },
 
+  [PFT_M0_KEY_ITER_START] = { .str = "m0_key_iter_start" },
   [PFT_M0_KEY_ITER_FINISH] = { .str = "m0_key_iter_finish" },
   [PFT_M0_KEY_ITER_FIND] = { .str = "m0_key_iter_find" },
   [PFT_M0_KEY_ITER_NEXT] = { .str = "m0_key_iter_next" },
+  [PFT_M0_KEY_ITER_END] = { .str = "m0_key_iter_end" },
 
 };
 _Static_assert(ARRAY_SIZE(g_function_tag_items_map) == PFT_END, "Invalid function tag");
+
+static const struct submodule_tag_items {
+  const char* str;
+} g_sm_tag_items_map[] = {
+  [PST_FSAL] = { .str = "PST_FSAL" },
+  [PST_KVS] = { .str = "PST_KVS" },
+  [PST_CFS] = { .str = "PST_CFS" },
+  [PST_DSTORE] = { .str = "PST_DSTORE" },
+  [PST_DS] = { .str = "PST_DS" },
+  [PST_CORTX_KVS] = { .str = "PST_CORTX_KVS" },
+  [PST_M0] = { .str = "PST_M0" },
+  [PST_INIT] = { .str = "PST_INIT" },
+  [PST_M0KVS] = { .str = "PST_M0KVS" },
+  [PST_M0_KEY_ITER] = { .str = "PST_M0_KEY_ITER" },
+};
+_Static_assert(ARRAY_SIZE(g_sm_tag_items_map) == PST_END, "Invalid sm tag");
 
 static void decode_perfc_function_tags(struct m0_addb2__context *ctx,
                                        const uint64_t *v, char *buf)
 {
   M0_PRE(*v < PFT_END);
   strcpy(buf, g_function_tag_items_map[*v].str);
+}
+
+static void decode_perfc_sm_tags(struct m0_addb2__context *ctx,
+                                       const uint64_t *v, char *buf)
+{
+  M0_PRE(*v < PFT_END);
+  strcpy(buf, g_sm_tag_items_map[*v].str);
 }
 
 static const struct entry_type_items {
@@ -350,6 +395,7 @@ static struct m0_addb2__id_intrp gs_curr_ids[] = {
         "fsuser_state",
         {
             &decode_perfc_function_tags,
+            &decode_perfc_sm_tags,
             &decode_perfc_entry_type,
             &hex, // operation id
             &decode_perfc_entity_states
@@ -360,6 +406,7 @@ static struct m0_addb2__id_intrp gs_curr_ids[] = {
         "fsuser_attribute",
         {
             &decode_perfc_function_tags,
+            &decode_perfc_sm_tags,
             &decode_perfc_entry_type,
             &hex, // operation id
             &decode_perfc_entity_attrs,
@@ -371,6 +418,7 @@ static struct m0_addb2__id_intrp gs_curr_ids[] = {
         "fsuser_map",
         {
             &decode_perfc_function_tags,
+            &decode_perfc_sm_tags,
             &decode_perfc_entry_type,
             &hex, // map name
             &hex, // operation id
