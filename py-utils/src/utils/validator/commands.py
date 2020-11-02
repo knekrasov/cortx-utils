@@ -84,3 +84,21 @@ class ConsulVCommand(VCommand):
         """Validate consul status."""
 
         self._consul.validate(self.v_type, self.args)
+
+class BmcVCommand(VCommand):
+    """BMC related commands."""
+
+    name = "bmc"
+
+    def __init__(self, args):
+        super(BmcVCommand, self).__init__(args)
+
+        sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+        from v_bmc import BmcV
+
+        self._bmc = BmcV()
+
+    def process(self):
+        """Validate bmc status."""
+
+        self._bmc.validate(self.v_type, self.args)
