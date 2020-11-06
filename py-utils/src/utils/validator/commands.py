@@ -16,12 +16,14 @@
 # For any questions about this software or licensing,
 # please email opensource@seagate.com or cortx-questions@seagate.com.
 
-from typing import Any, List
+import argparse
+from typing import Any, Callable, List
 
 from .v_bmc import BmcV
 from .v_consul import ConsulV
 from .v_elasticsearch import ElasticsearchV
 from .v_network import NetworkV
+from .v_pacemaker import PacemakerV
 from .v_salt import SaltV
 from .v_storage import StorageV
 
@@ -120,3 +122,54 @@ class ElasticsearchCommand(VCommand):
 
     def create_validator(self) -> Any:
         return ElasticsearchV()
+
+
+class PacemakerCommand(VCommand):
+    """Pacemaker-related checks."""
+    name = 'pacemaker'
+
+    def create_validator(self):
+        return PacemakerV()
+
+    def set_parsed_args(self, args):
+        # we don't need v_type in this command
+        self._parsed_args = args
+
+    def get_validator(self) -> PacemakerV:
+        return self._validator
+
+    def add_args(self, parser):
+        """Add Command args for parsing."""
+
+        pcs_parser = parser.add_parser(self.name, help='Pacemaker Validations')
+        subp = pcs_parser.add_subparsers()
+
+        def add_subcommand(name: str, description: str,
+                           fn: Callable[[], None]) -> None:
+            sub_cmd = subp.add_parser(name, help=description)
+            sub_cmd.add_argument('--stub',
+                                 dest='handler_fn',
+                                 default=fn,
+                                 help=argparse.SUPPRESS)
+
+        add_subcommand('corosync', 'Basic sanity check of Pacemaker',
+                       self._validate_stonith)
+        add_subcommand(
+            'stonith',
+            'Check whether STONITH resources are configured and running',
+            self._validate_stonith)
+
+        pcs_parser.set_defaults(command=self)
+
+    def process(self):
+        handler = self._parsed_args.handler_fn
+        handler()
+
+    def _validate_config(self):
+        self.get_validator().ensure_configured()
+
+    def _validate_stonith(self):
+        v = self.get_validator()
+        v.ensure_two_stonith_only()
+        v.ensure_stonith_for_both_nodes_exist()
+        v.ensure_all_stonith_running()
